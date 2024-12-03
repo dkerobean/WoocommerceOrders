@@ -1,4 +1,5 @@
 import os
+import json
 from woocommerce import API
 from dotenv import load_dotenv
 from datetime import datetime
@@ -33,14 +34,35 @@ def fetch_orders_for_today():
         else:
             print(f"Error fetching orders: {response.status_code}")
             print(response.json())
+            return []
     except Exception as e:
         print(f"An error occurred: {e}")
+        return []
 
 
-# Call the function and print the orders
+# Extract relevant fields from orders and save to JSON
+def save_orders_to_json(orders, file_name="orders.json"):
+    formatted_orders = []
+    for order in orders:
+        formatted_order = {
+            "name": f"{order['billing']['first_name']} {order['billing']['last_name']}",
+            "location": order['billing']['address_1'],
+            "product": ", ".join([item['name'] for item in order['line_items']]),
+            "state": order['billing']['state'],
+            "phone_number": order['billing']['phone']
+        }
+        formatted_orders.append(formatted_order)
+
+    # Write to a JSON file
+    with open(file_name, "w") as file:
+        json.dump(formatted_orders, file, indent=4)
+    print(f"Orders saved to {file_name}")
+
+
+# Main function
 if __name__ == "__main__":
     orders = fetch_orders_for_today()
     if orders:
-        print(f"Orders for {today}:")
-        for order in orders:
-            print(f"Order ID: {order['id']}, Total: {order['total']}, Status: {order['status']}")
+        save_orders_to_json(orders)
+    else:
+        print("No orders found for today.")
