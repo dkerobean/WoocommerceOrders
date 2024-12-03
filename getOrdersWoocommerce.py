@@ -19,26 +19,44 @@ wcapi = API(
     consumer_key=WC_CONSUMER_KEY,
     consumer_secret=WC_CONSUMER_SECRET,
     version="wc/v3",
-    timeout=20  # Increased timeout
+    timeout=20
 )
 
-# Get today's date in the required format
+# Get today's date
 today = datetime.now().strftime("%Y-%m-%d")
+today_csv_date = datetime.now().strftime("%d-%m-%Y")  # For filenames
 
-# Fetch all orders for the current date with pagination
+# State abbreviation to full name mapping
+STATE_MAPPING = {
+    "GA": "Greater Accra",  # Greater Accra Region (GA)
+    "AH": "Ashanti",  # Ashanti Region (AH)
+    "AA": "Ahafo",  # Ahafo Region (AA)
+    "BR": "Brong-Ahafo",  # Brong-Ahafo Region (BR)
+    "CE": "Central",  # Central Region (CE)
+    "EP": "Eastern",  # Eastern Region (EP)
+    "NR": "Northern",  # Northern Region (NR)
+    "UE": "Upper East",  # Upper East Region (UE)
+    "UW": "Upper West",  # Upper West Region (UW)
+    "WR": "Western",  # Western Region (WR)
+    "VR": "Volta",  # Volta Region (VR)
+    "WP": "Western North",  # Western North Region (WP)
+    "CP": "Cape Coast",  # Cape Coast is part of the Central Region, full name for clarity
+}
+
+# Fetch all orders for today
 def fetch_all_orders_for_today():
     all_orders = []
-    page = 1  # Start with the first page
+    page = 1
 
     while True:
         try:
             response = wcapi.get("orders", params={"date_created": today, "per_page": 100, "page": page})
             if response.status_code == 200:
                 orders = response.json()
-                if not orders:  # If no more orders are returned, exit the loop
+                if not orders:
                     break
-                all_orders.extend(orders)  # Add the fetched orders to the list
-                page += 1  # Move to the next page
+                all_orders.extend(orders)
+                page += 1
             else:
                 print(f"Error fetching orders: {response.status_code}")
                 print(response.json())
@@ -49,11 +67,12 @@ def fetch_all_orders_for_today():
 
     return all_orders
 
-# Save orders to a JSON file
-def save_orders_to_json(orders, file_name="orders.json"):
+# Save orders to JSON
+def save_orders_to_json(orders, file_name=f"orders_{today_csv_date}.json"):
     formatted_orders = []
     for order in orders:
         formatted_order = {
+            "date": today,  # Add the date
             "name": f"{order['billing']['first_name']} {order['billing']['last_name']}",
             "location": order['billing']['address_1'],
             "product": ", ".join([item['name'] for item in order['line_items']]),
@@ -62,21 +81,24 @@ def save_orders_to_json(orders, file_name="orders.json"):
         }
         formatted_orders.append(formatted_order)
 
-    # Write to a JSON file
+    # Write to JSON
     with open(file_name, "w") as file:
         json.dump(formatted_orders, file, indent=4)
     print(f"Orders saved to {file_name}")
 
-# Save orders to a CSV file for Swoove
-def save_orders_to_swoove_csv(orders, file_name="swoove.csv"):
-    with open(file_name, mode="w", newline="") as file:
+# Save orders to Swoove CSV
+def save_orders_to_swoove_csv(orders, file_name=f"swoove_{today_csv_date}.csv"):
+    is_new_file = not os.path.exists(file_name)
+    with open(file_name, mode="a", newline="") as file:
         writer = csv.writer(file)
-        # Write the header row
-        writer.writerow(["Pickup Name", "Pickup Mobile", "Pickup Location", "Dropoff Name", "Dropoff Mobile", "Dropoff Location", "Item Name", "Item Price", "Item Size"])
+        if is_new_file:
+            # Write header if the file is new
+            writer.writerow(["Date", "Pickup Name", "Pickup Mobile", "Pickup Location", "Dropoff Name", "Dropoff Mobile", "Dropoff Location", "Item Name", "Item Price", "Item Size"])
 
         for order in orders:
             for item in order['line_items']:
                 writer.writerow([
+                    today,  # Add the date
                     "shopeazygh",  # Pickup Name
                     "0558676095",  # Pickup Mobile
                     "Omanjor",  # Pickup Location
@@ -85,29 +107,32 @@ def save_orders_to_swoove_csv(orders, file_name="swoove.csv"):
                     order['billing']['address_1'],  # Dropoff Location
                     item['name'],  # Item Name
                     item['price'],  # Item Price
-                    "Small",  # Item Size (default prepended with "Small")
+                    "Small",  # Item Size
                 ])
     print(f"Swoove orders saved to {file_name}")
 
-# Save orders to a CSV file for VDL
-def save_orders_to_vdl_csv(orders, file_name="vdl.csv"):
-    with open(file_name, mode="w", newline="") as file:
+# Save orders to VDL CSV
+def save_orders_to_vdl_csv(orders, file_name=f"vdl_{today_csv_date}.csv"):
+    is_new_file = not os.path.exists(file_name)
+    with open(file_name, mode="a", newline="") as file:
         writer = csv.writer(file)
-        # Write the header row
-        writer.writerow(["DATE [dd/mm/yyyy]", "PRODUCT", "UNIT PRICE", "NAME OF CUSTOMER", "REGION", "LOCATION OF CUSTOMER", "PHONE NUMBER", "QUANTITY OF PRODUCTS ORDERED", "COMMENT"])
+        if is_new_file:
+            # Write header if the file is new
+            writer.writerow(["DATE [dd/mm/yyyy]", "PRODUCT", "UNIT PRICE", "NAME OF CUSTOMER", "REGION", "LOCATION OF CUSTOMER", "PHONE NUMBER", "QUANTITY OF PRODUCTS ORDERED", "COMMENT"])
 
         for order in orders:
             for item in order['line_items']:
+                region_full = STATE_MAPPING.get(order['billing']['state'], order['billing']['state'])
                 writer.writerow([
-                    datetime.now().strftime("%d/%m/%Y"),  # Date
+                    today,  # Date
                     item['name'],  # Product
                     item['price'],  # Unit Price
                     f"{order['billing']['first_name']} {order['billing']['last_name']}",  # Name of Customer
-                    order['billing']['state'],  # Region
+                    region_full,  # Region (Full Name)
                     order['billing']['address_1'],  # Location of Customer
                     order['billing']['phone'],  # Phone Number
-                    item['quantity'],  # Quantity of Products Ordered
-                    "",  # Comment (default empty)
+                    item['quantity'],  # Quantity
+                    "",  # Comment
                 ])
     print(f"VDL orders saved to {file_name}")
 
