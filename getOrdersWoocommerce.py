@@ -43,6 +43,7 @@ STATE_MAPPING = {
     "CP": "Cape Coast",  # Cape Coast is part of the Central Region, full name for clarity
 }
 
+
 # Fetch all orders for today
 def fetch_all_orders_for_today():
     all_orders = []
@@ -67,6 +68,7 @@ def fetch_all_orders_for_today():
 
     return all_orders
 
+
 # Save orders to JSON
 def save_orders_to_json(orders, file_name=f"orders_{today_csv_date}.json"):
     formatted_orders = []
@@ -85,6 +87,7 @@ def save_orders_to_json(orders, file_name=f"orders_{today_csv_date}.json"):
     with open(file_name, "w") as file:
         json.dump(formatted_orders, file, indent=4)
     print(f"Orders saved to {file_name}")
+
 
 # Save orders to Swoove CSV
 def save_orders_to_swoove_csv(orders, file_name=f"swoove_{today_csv_date}.csv"):
@@ -111,6 +114,7 @@ def save_orders_to_swoove_csv(orders, file_name=f"swoove_{today_csv_date}.csv"):
                 ])
     print(f"Swoove orders saved to {file_name}")
 
+
 # Save orders to VDL CSV
 def save_orders_to_vdl_csv(orders, file_name=f"vdl_{today_csv_date}.csv"):
     is_new_file = not os.path.exists(file_name)
@@ -135,6 +139,7 @@ def save_orders_to_vdl_csv(orders, file_name=f"vdl_{today_csv_date}.csv"):
                     "",  # Comment
                 ])
     print(f"VDL orders saved to {file_name}")
+
 
 # Main function
 if __name__ == "__main__":
