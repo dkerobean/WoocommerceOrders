@@ -28,19 +28,19 @@ today_csv_date = datetime.now().strftime("%d-%m-%Y")  # For filenames
 
 # State abbreviation to full name mapping
 STATE_MAPPING = {
-    "GA": "Greater Accra",  # Greater Accra Region (GA)
-    "AH": "Ashanti",  # Ashanti Region (AH)
-    "AA": "Ahafo",  # Ahafo Region (AA)
-    "BR": "Brong-Ahafo",  # Brong-Ahafo Region (BR)
-    "CE": "Central",  # Central Region (CE)
-    "EP": "Eastern",  # Eastern Region (EP)
-    "NR": "Northern",  # Northern Region (NR)
-    "UE": "Upper East",  # Upper East Region (UE)
-    "UW": "Upper West",  # Upper West Region (UW)
-    "WR": "Western",  # Western Region (WR)
-    "VR": "Volta",  # Volta Region (VR)
-    "WP": "Western North",  # Western North Region (WP)
-    "CP": "Cape Coast",  # Cape Coast is part of the Central Region, full name for clarity
+    "GA": "Greater Accra",
+    "AH": "Ashanti",
+    "AA": "Ahafo",
+    "BR": "Brong-Ahafo",
+    "CE": "Central",
+    "EP": "Eastern",
+    "NR": "Northern",
+    "UE": "Upper East",
+    "UW": "Upper West",
+    "WR": "Western",
+    "VR": "Volta",
+    "WP": "Western North",
+    "CP": "Cape Coast", 
 }
 
 

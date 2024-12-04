@@ -1,6 +1,22 @@
 [
     {
         "date": "2024-12-04",
+        "name": "Moses Kwame ",
+        "location": "Lapaz",
+        "product": "Nano Tape",
+        "state": "AA",
+        "phone_number": "+233245638455"
+    },
+    {
+        "date": "2024-12-04",
+        "name": "Mary Gifty ",
+        "location": "Eden heights",
+        "product": "Nano Tape",
+        "state": "AA",
+        "phone_number": "0555379222"
+    },
+    {
+        "date": "2024-12-04",
         "name": "Herbert Adams ",
         "location": "Sawer",
         "product": "Nano Tape",
