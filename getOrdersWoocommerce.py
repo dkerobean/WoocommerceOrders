@@ -40,7 +40,7 @@ STATE_MAPPING = {
     "WR": "Western",
     "VR": "Volta",
     "WP": "Western North",
-    "CP": "Cape Coast", 
+    "CP": "Cape Coast",
 }
 
 
@@ -74,11 +74,11 @@ def save_orders_to_json(orders, file_name=f"orders_{today_csv_date}.json"):
     formatted_orders = []
     for order in orders:
         formatted_order = {
-            "date": today,  # Add the date
-            "name": f"{order['billing']['first_name']} {order['billing']['last_name']}",
+            # "date": today,  # Add the date
+            # "name": f"{order['billing']['first_name']} {order['billing']['last_name']}",
             "location": order['billing']['address_1'],
             "product": ", ".join([item['name'] for item in order['line_items']]),
-            "state": order['billing']['state'],
+            # "state": order['billing']['state'],
             "phone_number": order['billing']['phone']
         }
         formatted_orders.append(formatted_order)
