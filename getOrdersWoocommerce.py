@@ -26,7 +26,10 @@ wcapi = API(
 today = datetime.now().strftime("%Y-%m-%d")
 today_csv_date = datetime.now().strftime("%d-%m-%Y")  # For filenames
 
-# State abbreviation to full name mapping
+# File to track processed orders
+PROCESSED_ORDERS_FILE = "processed_orders.json"
+
+# Mapping for region codes
 STATE_MAPPING = {
     "GA": "Greater Accra",
     "AH": "Ashanti",
@@ -43,15 +46,36 @@ STATE_MAPPING = {
     "CP": "Cape Coast",
 }
 
+# Load processed orders
+def load_processed_orders():
+    if os.path.exists(PROCESSED_ORDERS_FILE):
+        with open(PROCESSED_ORDERS_FILE, "r") as file:
+            return set(json.load(file))
+    return set()
 
-# Fetch all orders for today
+# Save processed orders
+def save_processed_orders(order_ids):
+    with open(PROCESSED_ORDERS_FILE, "w") as file:
+        json.dump(list(order_ids), file)
+
+# Fetch orders for today only
 def fetch_all_orders_for_today():
     all_orders = []
     page = 1
 
+    # Define the start and end of the current day
+    start_of_day = f"{today}T00:00:00"
+    end_of_day = f"{today}T23:59:59"
+
     while True:
         try:
-            response = wcapi.get("orders", params={"date_created": today, "per_page": 100, "page": page})
+            # Use date range filtering for today's orders
+            response = wcapi.get("orders", params={
+                "after": start_of_day,
+                "before": end_of_day,
+                "per_page": 100,
+                "page": page
+            })
             if response.status_code == 200:
                 orders = response.json()
                 if not orders:
@@ -68,86 +92,104 @@ def fetch_all_orders_for_today():
 
     return all_orders
 
-
-# Save orders to JSON
-def save_orders_to_json(orders, file_name=f"orders_{today_csv_date}.json"):
-    formatted_orders = []
-    for order in orders:
-        formatted_order = {
-            # "date": today,  # Add the date
-            # "name": f"{order['billing']['first_name']} {order['billing']['last_name']}",
+# Save orders to a JSON file
+def save_orders_to_json(orders, run_number):
+    file_name = f"new_orders_{today_csv_date}_run{run_number}.json"
+    formatted_orders = [
+        {
             "location": order['billing']['address_1'],
             "product": ", ".join([item['name'] for item in order['line_items']]),
-            # "state": order['billing']['state'],
             "phone_number": order['billing']['phone']
         }
-        formatted_orders.append(formatted_order)
+        for order in orders
+    ]
 
-    # Write to JSON
     with open(file_name, "w") as file:
         json.dump(formatted_orders, file, indent=4)
-    print(f"Orders saved to {file_name}")
-
-
-# Save orders to Swoove CSV
-def save_orders_to_swoove_csv(orders, file_name=f"swoove_{today_csv_date}.csv"):
-    is_new_file = not os.path.exists(file_name)
-    with open(file_name, mode="a", newline="") as file:
-        writer = csv.writer(file)
-        if is_new_file:
-            # Write header if the file is new
-            writer.writerow(["Date", "Pickup Name", "Pickup Mobile", "Pickup Location", "Dropoff Name", "Dropoff Mobile", "Dropoff Location", "Item Name", "Item Price", "Item Size"])
-
-        for order in orders:
-            for item in order['line_items']:
-                writer.writerow([
-                    today,  # Add the date
-                    "shopeazygh",  # Pickup Name
-                    "0558676095",  # Pickup Mobile
-                    "Omanjor",  # Pickup Location
-                    f"{order['billing']['first_name']} {order['billing']['last_name']}",  # Dropoff Name
-                    order['billing']['phone'],  # Dropoff Mobile
-                    order['billing']['address_1'],  # Dropoff Location
-                    item['name'],  # Item Name
-                    item['price'],  # Item Price
-                    "Small",  # Item Size
-                ])
-    print(f"Swoove orders saved to {file_name}")
-
+    print(f"New orders saved to {file_name}")
 
 # Save orders to VDL CSV
-def save_orders_to_vdl_csv(orders, file_name=f"vdl_{today_csv_date}.csv"):
+def save_orders_to_vdl_csv(orders, run_number):
+    file_name = f"vdl_orders_{today_csv_date}_run{run_number}.csv"
     is_new_file = not os.path.exists(file_name)
+
     with open(file_name, mode="a", newline="") as file:
         writer = csv.writer(file)
         if is_new_file:
-            # Write header if the file is new
+            # Write header for VDL
             writer.writerow(["DATE [dd/mm/yyyy]", "PRODUCT", "UNIT PRICE", "NAME OF CUSTOMER", "REGION", "LOCATION OF CUSTOMER", "PHONE NUMBER", "QUANTITY OF PRODUCTS ORDERED", "COMMENT"])
 
         for order in orders:
             for item in order['line_items']:
                 region_full = STATE_MAPPING.get(order['billing']['state'], order['billing']['state'])
                 writer.writerow([
-                    today,  # Date
+                    today_csv_date,  # Date
                     item['name'],  # Product
                     item['price'],  # Unit Price
                     f"{order['billing']['first_name']} {order['billing']['last_name']}",  # Name of Customer
-                    region_full,  # Region (Full Name)
-                    order['billing']['address_1'],  # Location of Customer
-                    order['billing']['phone'],  # Phone Number
+                    region_full,  # Region
+                    order['billing']['address_1'],  # Location
+                    order['billing']['phone'],  # Phone
                     item['quantity'],  # Quantity
-                    "",  # Comment
+                    ""  # Comment
                 ])
     print(f"VDL orders saved to {file_name}")
 
+# Save orders to Stride CSV
+def save_orders_to_stride_csv(orders, run_number):
+    file_name = f"stride_orders_{today_csv_date}_run{run_number}.csv"
+    is_new_file = not os.path.exists(file_name)
+
+    with open(file_name, mode="a", newline="") as file:
+        writer = csv.writer(file)
+        if is_new_file:
+            # Write header for Stride
+            writer.writerow(["Order ID", "Customer Name", "Phone", "Address", "Product", "Quantity", "Price"])
+
+        for order in orders:
+            for item in order['line_items']:
+                writer.writerow([
+                    order['id'],  # Order ID
+                    f"{order['billing']['first_name']} {order['billing']['last_name']}",  # Customer Name
+                    order['billing']['phone'],  # Phone
+                    order['billing']['address_1'],  # Address
+                    item['name'],  # Product
+                    item['quantity'],  # Quantity
+                    item['price']  # Price
+                ])
+    print(f"Stride orders saved to {file_name}")
 
 # Main function
 if __name__ == "__main__":
-    orders = fetch_all_orders_for_today()
-    if orders:
-        print(f"Fetched {len(orders)} orders for today.")
-        save_orders_to_json(orders)
-        save_orders_to_swoove_csv(orders)
-        save_orders_to_vdl_csv(orders)
+    # Load processed orders from file
+    processed_orders = load_processed_orders()
+
+    # Fetch all orders for today
+    all_orders = fetch_all_orders_for_today()
+
+    # Filter out already processed orders
+    new_orders = [order for order in all_orders if order['id'] not in processed_orders]
+
+    if new_orders:
+        print(f"Fetched {len(new_orders)} new orders for today.")
+
+        # Add new orders to the processed set
+        processed_orders.update(order['id'] for order in new_orders)
+
+        # Determine the current run number
+        existing_files = [f for f in os.listdir() if f.startswith(f"new_orders_{today_csv_date}")]
+        run_number = len(existing_files) + 1
+
+        # Save new orders to JSON
+        save_orders_to_json(new_orders, run_number)
+
+        # Save new orders to VDL CSV
+        save_orders_to_vdl_csv(new_orders, run_number)
+
+        # Save new orders to Stride CSV
+        save_orders_to_stride_csv(new_orders, run_number)
+
+        # Update the processed orders log
+        save_processed_orders(processed_orders)
     else:
-        print("No orders found for today.")
+        print("No new orders found.")
